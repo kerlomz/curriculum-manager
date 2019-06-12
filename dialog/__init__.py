@@ -5,5 +5,4 @@
 from dialog.about import *
 from dialog.schedule import *
 from dialog.feedback import *
-from dialog.share import *
 from dialog.donate import *
