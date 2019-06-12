@@ -36,7 +36,7 @@ class Core:
             c_volume_serial_number = win32api.GetVolumeInformation("C:\\")[1]
             return str(c_volume_serial_number)
         except ImportError:
-            return 0
+            return '0'
 
     def machine_code(self, stu_code):
         c_volume_serial_number = self.c_volume_serial_number
