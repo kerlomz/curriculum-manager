@@ -1,0 +1,16 @@
+wxpython>=4.0.0b2
+requests=>2.18.4
+pillow>=4.3.0
+pycrypto>=2.6.1
+parsel>=1.2.0
+qrcode>=5.3
+pyperclip>=1.6.0
+pyinstaller>=3.3.1
+pathlib>=1.0.1
+wmi>=1.4.9
+pywin32
+pyyaml
+grpcio>=1.14.2
+grpcio_tools>=1.14.2
+asyncio
+psutil
