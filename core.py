@@ -73,8 +73,3 @@ class Core:
         machine_code_auth = self.machine_code_auth(stu_code, c_volume_serial_number, mac_addr, hostname)
         device.add_license(stu_code, machine_code_auth)
         return device
-
-
-if __name__ == '__main__':
-    core = Core()
-    print(core.machine_code('31702411'))
