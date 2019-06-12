@@ -5,7 +5,6 @@ import time
 import hashlib
 import base64
 import socket
-import win32api
 from psutil import net_if_addrs
 from utils import RSAUtils
 from entity import Device
@@ -32,10 +31,11 @@ class Core:
 
     @property
     def c_volume_serial_number(self):
-        c_volume_serial_number = win32api.GetVolumeInformation("C:\\")[1]
-        if c_volume_serial_number:
+        try:
+            import win32api
+            c_volume_serial_number = win32api.GetVolumeInformation("C:\\")[1]
             return str(c_volume_serial_number)
-        else:
+        except ImportError:
             return 0
 
     def machine_code(self, stu_code):
@@ -73,3 +73,8 @@ class Core:
         machine_code_auth = self.machine_code_auth(stu_code, c_volume_serial_number, mac_addr, hostname)
         device.add_license(stu_code, machine_code_auth)
         return device
+
+
+if __name__ == '__main__':
+    core = Core()
+    print(core.machine_code('31702411'))
