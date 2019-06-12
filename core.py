@@ -38,8 +38,9 @@ class Core:
         except ImportError:
             return '0'
 
-    def machine_code(self, stu_code):
-        c_volume_serial_number = self.c_volume_serial_number
+    @classmethod
+    def machine_code(cls, stu_code):
+        c_volume_serial_number = cls.c_volume_serial_number
         mac = [v[0][1] for v in net_if_addrs().values() if len(v[0][1]) == 17][0]
         hostname = socket.gethostname()
         plain_text = "{}||{}||{}||{}||{}".format(stu_code, c_volume_serial_number, mac, hostname, time.time())
@@ -48,7 +49,8 @@ class Core:
         encrypted = encrypted.replace(")", "9").replace("{", "1")
         return encrypted
 
-    def decrypt_auth(self, key):
+    @classmethod
+    def decrypt_auth(cls, key):
         key = key.replace("9", ")").replace("1", "{")
         key = key.replace(")", "1").replace("{", "9").replace("&", "E").replace("%", "b")
         plain_text = RSAUtils.decrypt(key)
@@ -57,10 +59,11 @@ class Core:
         c_volume_serial_number = device_group[1]
         mac = device_group[2]
         hostname = device_group[3]
-        auth_code = self.machine_code_auth(stu_code, c_volume_serial_number, mac, hostname)
+        auth_code = cls.machine_code_auth(stu_code, c_volume_serial_number, mac, hostname)
         return auth_code
 
-    def decrypt_auth2object(self, machine_code) -> Device:
+    @classmethod
+    def decrypt_auth2object(cls, machine_code) -> Device:
         key = machine_code.replace("9", ")").replace("1", "{")
         key = key.replace(")", "1").replace("{", "9").replace("&", "E").replace("%", "b")
         plain_text = RSAUtils.decrypt(key)
@@ -70,6 +73,6 @@ class Core:
         mac_addr = device_group[2]
         hostname = device_group[3]
         device = Device(mac_addr=mac_addr, hostname=hostname, c_volume_serial_number=c_volume_serial_number)
-        machine_code_auth = self.machine_code_auth(stu_code, c_volume_serial_number, mac_addr, hostname)
+        machine_code_auth = cls.machine_code_auth(stu_code, c_volume_serial_number, mac_addr, hostname)
         device.add_license(stu_code, machine_code_auth)
         return device
