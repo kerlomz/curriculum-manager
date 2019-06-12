@@ -4,6 +4,7 @@
 
 from wx import *
 from gui_manager import *
+from updater import Updater
 
 
 class MainApp(App):
@@ -28,6 +29,7 @@ class MainApp(App):
 
 
 def main():
+    Updater.check_update()
     app = MainApp()
     app.MainLoop()
 
