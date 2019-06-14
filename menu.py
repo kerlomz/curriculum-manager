@@ -48,11 +48,6 @@ class MenuHandler(object):
         self.Service = service
         self.GUI = GUI(parent, SystemConfig.LANGUAGE)
 
-    def on_share(self, e):
-        dlg = ShareDlg(identifier=self.Service.student_code)
-        dlg.ShowModal()
-        dlg.Destroy()
-
     def on_schedule(self, e):
         dlg = CurriculumSchedule(self.parent, service=self.Service)
         dlg.ShowModal()

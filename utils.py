@@ -5,7 +5,6 @@ import time
 import io
 import sys
 import grpc
-import base64
 import datetime
 import requests
 import grpc_pb2
@@ -13,16 +12,10 @@ import grpc_pb2_grpc
 from PIL import ImageGrab
 from urllib import parse
 from requests import Session, Request
-from Crypto.Cipher import PKCS1_v1_5 as Cipher_pkcs1_v1_5
-from Crypto.PublicKey import RSA
 from language.utils import *
 from config import *
-
-security = Security()
-PUBLIC_KEY = security.public_key
-PRIVATE_KEY = security.private_key
-LOCAL_PUBLIC_KEY = security.local_public_key
-LOCAL_PRIVATE_KEY = security.local_private_key
+from core import RSAUtils
+from entity import ClientMessage
 
 
 class System(object):
@@ -322,13 +315,7 @@ class Network(object):
 
     @staticmethod
     def get_login_params(identifier, password, captcha, token):
-        try:
-            radio_button_text = "学生".encode("gbk")
-        except UnicodeDecodeError:
-            import sys
-            reload(sys)
-            sys.setdefaultencoding('utf8')
-            radio_button_text = "学生".encode("gbk")
+        radio_button_text = "学生".encode("gbk")
         return {
             "Button1": "",
             "TextBox1": "",
@@ -341,57 +328,6 @@ class Network(object):
             "hidsc": "",
             "lbLanguage": ""
         }
-
-
-class RSAUtils(object):
-
-    @staticmethod
-    def encrypt(plain_text, local=False):
-        public_key = RSA.importKey(LOCAL_PUBLIC_KEY if local else PUBLIC_KEY)
-        _p = Cipher_pkcs1_v1_5.new(public_key)
-        plain_text = plain_text.encode('utf-8') if isinstance(plain_text, str) else plain_text
-        # 1024bit key
-        try:
-            default_encrypt_length = 117
-            len_content = len(plain_text)
-            if len_content < default_encrypt_length:
-                return base64.b64encode(_p.encrypt(plain_text)).decode()
-            offset = 0
-            params_lst = []
-            while len_content - offset > 0:
-                if len_content - offset > default_encrypt_length:
-                    params_lst.append(_p.encrypt(plain_text[offset:offset + default_encrypt_length]))
-                else:
-                    params_lst.append(_p.encrypt(plain_text[offset:]))
-                offset += default_encrypt_length
-            target = b''.join(params_lst)
-            return base64.b64encode(target).decode()
-        except ValueError:
-            return None
-
-    @staticmethod
-    def decrypt(cipher_text, decode=True, local=False):
-        private_key = RSA.importKey(LOCAL_PRIVATE_KEY if local else PRIVATE_KEY)
-        _pri = Cipher_pkcs1_v1_5.new(private_key)
-        cipher_text = base64.b64decode(cipher_text if isinstance(cipher_text, bytes) else cipher_text.encode('utf-8'))
-        # 1024bit key
-        try:
-            default_length = 128
-            len_content = len(cipher_text)
-            if len_content < default_length:
-                return _pri.decrypt(cipher_text, "ERROR").decode()
-            offset = 0
-            params_lst = []
-            while len_content - offset > 0:
-                if len_content - offset > default_length:
-                    params_lst.append(_pri.decrypt(cipher_text[offset: offset + default_length], "ERROR"))
-                else:
-                    params_lst.append(_pri.decrypt(cipher_text[offset:], "ERROR"))
-                offset += default_length
-            target = b''.join(params_lst)
-            return target.decode() if decode else target
-        except ValueError:
-            return None
 
 
 class CheckListUtils(object):
@@ -446,12 +382,12 @@ class File(object):
         return os.path.join(base_path, relative_path)
 
 
-class ResponseParser:
+class ResponseParser(object):
 
     def __init__(self, host: str, port):
         self._url = '{}:{}'.format(host, port)
 
-    def request(self, key, encrypted=True) -> object:
+    def request(self, key, encrypted=True) -> ClientMessage:
         channel = grpc.insecure_channel(self._url)
         stub = grpc_pb2_grpc.VerificationStub(channel)
         response = stub.verification(grpc_pb2.VerificationRequest(
@@ -464,7 +400,7 @@ class ResponseParser:
         return grpc_pb2.VerificationResult(result=ResponseParser.dumps(key))
 
     @staticmethod
-    def parse(request):
+    def parse(request) -> ClientMessage:
         decrypted_object = RSAUtils.decrypt(request, decode=False)
         return Cache.open(decrypted_object)
 
@@ -482,13 +418,13 @@ if __name__ == '__main__':
     c = core.Core()
     o = ResponseParser("localhost", port=5449)
     import entity
-    d = entity.Device().from_core(c)
+    d = entity.Device().from_core()
     ll = c.machine_code_auth(stu_code="31301188", c_volume_serial_number=d.c_volume_serial_number, mac_addr=d.mac_addr, hostname=d.hostname)
     print(ll)
     d.add_license("31301188", "90909090")
     oo = entity.ClientMessage(device=d, stu_code="31301188")
     print(oo.context)
-    r = ResponseParser("localhost", port=5449).request(entity.ClientMessage(device=entity.Device().from_core(c), stu_code="31301188").send(body={"123": 123}))
+    r = ResponseParser("localhost", port=5449).request(entity.ClientMessage(device=entity.Device().from_core(), stu_code="31301188").send(body={"123": 123}))
     # print(r)
     print(type(r))
     yy = r.context.body

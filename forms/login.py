@@ -17,7 +17,7 @@ class LoginFrame(Frame):
     def __init__(self, parent=None, _type=-1, update_ui=None, service=None):
 
         Frame.__init__(self, parent)
-        self.core = Core()
+        # self.core = Core()
         self.Size = (340, 200)
         self.GUI = GUI(self, SystemConfig.LANGUAGE)
         self.UpdateUI = update_ui
@@ -106,11 +106,11 @@ class LoginFrame(Frame):
             pwd = entry_widget[1].GetValue()
             self.Service.set_login(uid, pwd)
             stu_code = self.Service.student_code
-            auth_code = self.core.machine_code_auth(
+            auth_code = Core.machine_code_auth(
                     stu_code=stu_code,
-                    c_volume_serial_number=self.core.c_volume_serial_number,
-                    mac_addr=self.core.mac_addr,
-                    hostname=self.core.hostname
+                    c_volume_serial_number=Core.c_volume_serial_number(),
+                    mac_addr=Core.mac_addr(),
+                    hostname=Core.hostname()
             )
             if check_remember.IsChecked():
                 ConfigIO.update(
@@ -126,7 +126,7 @@ class LoginFrame(Frame):
                 )
                 exit(-999)
 
-            flag = GoogleRPC().verify(stu_code=stu_code)
+            flag = GoogleRPC.verify(stu_code=stu_code)
             if not flag:
                 GUI.alert_error(
                     self.GUI.text(UI.Main.Dialog.Error.TITLE),

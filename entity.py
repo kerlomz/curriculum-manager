@@ -2,8 +2,10 @@
 # -*- coding:utf-8 -*-
 # Author: kerlomz <kerlomz@gmail.com>
 import time
+import json
 import hashlib
 from enum import Enum, unique
+from core import Core, RSAUtils
 
 
 @unique
@@ -34,13 +36,29 @@ class Device(object):
             self.mac_addr, self.hostname, self.c_volume_serial_number, self.auth_license
         )
 
-    def from_core(self, core):
+    def dumps(self, with_license=True, with_id=False):
+        device = {
+            "mac_addr": self.mac_addr,
+            "hostname": self.hostname,
+            "c_volume_serial_number": self.c_volume_serial_number
+        }
+        if with_license:
+            device["auth_license"] = self.auth_license
+        if with_id:
+            device["id"] = hashlib.md5(device).hexdigest()
+        return json.dumps(device, ensure_ascii=False, separators=(',', ':'), sort_keys=True)
+
+    def from_core(self):
         self.new(
-            mac_addr=core.mac_addr,
-            hostname=core.hostname,
-            c_volume_serial_number=core.c_volume_serial_number
+            mac_addr=Core.mac_addr(),
+            hostname=Core.hostname(),
+            c_volume_serial_number=Core.c_volume_serial_number(),
         )
         return self
+
+    @property
+    def device_id(self):
+        return hashlib.md5(self.dumps(with_license=False, with_id=False)).hexdigest()
 
     @property
     def mac_addr(self):
@@ -65,8 +83,25 @@ class Device(object):
         self.__auth_license__ = auth_license if auth_license else self.__auth_license__
 
     def add_license(self, stu_code: str, auth_license: str):
-        self.__auth_license__.update({stu_code: auth_license})
+        if not stu_code:
+            return self
+        self.__auth_license__[stu_code] = auth_license
         return self
+
+    @classmethod
+    def decrypt_auth2object(cls, machine_code):
+        key = machine_code.replace("9", ")").replace("1", "{")
+        key = key.replace(")", "1").replace("{", "9").replace("&", "E").replace("%", "b")
+        plain_text = RSAUtils.decrypt(key)
+        device_group = plain_text.split("||")
+        stu_code = device_group[0]
+        c_volume_serial_number = device_group[1]
+        mac_addr = device_group[2]
+        hostname = device_group[3]
+        device = Device(mac_addr=mac_addr, hostname=hostname, c_volume_serial_number=c_volume_serial_number)
+        machine_code_auth = Core.machine_code_auth(stu_code, c_volume_serial_number, mac_addr, hostname)
+        device.add_license(stu_code, machine_code_auth)
+        return device
 
 
 class Context(object):
@@ -88,7 +123,7 @@ class ServerMessage(object):
         self.__context__: Context = Context()
         self.__timestamp__: float = 0.
         self.__sign__: str = None
-        self.__ver__: str = ver if ver else 1.0
+        self.__ver__: float = ver if ver else 1.0
 
     @property
     def now(self):
@@ -144,6 +179,7 @@ class ClientMessage(object):
         self.__sign__: str = None
         self.__device__: Device = device if device else None
         self.__student_code__: str = stu_code if stu_code else None
+        self.__auth_license__: str = self.device.auth_license.get(self.student_code)
 
     @property
     def now(self):
@@ -151,8 +187,6 @@ class ClientMessage(object):
 
     @property
     def context(self):
-        from core import Core
-        auth_code = self.device.auth_license.get(self.student_code)
         calc_auth_code = Core.machine_code_auth(
             stu_code=self.student_code,
             c_volume_serial_number=self.device.c_volume_serial_number,
@@ -160,11 +194,26 @@ class ClientMessage(object):
             hostname=self.device.hostname)
 
         if self.__timestamp__ > self.now + 300 or self.__timestamp__ < self.now - 300:
-            return Context(message="Forged timestamp suspected!", code=-997, context_type=MessageType.Error)
-        if auth_code != calc_auth_code:
-            return Context(message="Illegal authorization!", code=-998, context_type=MessageType.Error)
+            return Context(
+                body=self.__context__.body,
+                message="Forged timestamp suspected!",
+                code=-997,
+                context_type=MessageType.Error
+            )
+        if self.__auth_license__ != calc_auth_code:
+            return Context(
+                body=self.__context__.body,
+                message="Illegal authorization!",
+                code=-998,
+                context_type=MessageType.Error
+            )
         if self.__sign__ != self.sign:
-            return Context(message="Forged sign suspected!", code=-999, context_type=MessageType.Alert)
+            return Context(
+                body=self.__context__.body,
+                message="Forged sign suspected!",
+                code=-999,
+                context_type=MessageType.Alert
+            )
         return self.__context__
 
     @property
@@ -178,6 +227,10 @@ class ClientMessage(object):
     @property
     def student_code(self):
         return self.__student_code__
+
+    @property
+    def auth_license(self):
+        return self.__auth_license__
 
     @property
     def sign(self):

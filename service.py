@@ -14,6 +14,7 @@ from utils import *
 from fake_useragent import UserAgent
 from requests import utils
 from concurrent.futures import ThreadPoolExecutor
+from verification import GoogleRPC
 
 
 class Service(object):
@@ -640,9 +641,10 @@ class Service(object):
     def send_select_record(self):
         pass
 
-    def send_heartbeat(self, times=0):
+    def send_heartbeat(self, course_code, times=0):
         """服务端：心跳包"""
-        pass
+        GoogleRPC.heartbeat(stu_code=self.student_code, course=course_code)
+
 
     def compulsory_csrf_auth(self):
         base_action = self.request.get_compulsory_course_select_url(
@@ -701,7 +703,7 @@ class Service(object):
 
     def start_work(self):
         """触发选课操作"""
-        self.send_heartbeat()
+        self.send_heartbeat(course_code=self.value_ref['ExpectedCourseCode'][0])
         self.ctrl_ref['LaunchButton'].Disable()
 
         if self.value_ref['ExpectedCourseType'] == ['COMPULSORY']:
@@ -739,7 +741,7 @@ class Service(object):
             return
         loop = asyncio.new_event_loop()
         loop.run_until_complete(self.async_tasks(action, params, self.value_ref['ExpectedCourseType']))
-        self.send_heartbeat()
+        self.send_heartbeat(course_code=self.value_ref["ExpectedCourseCode"])
         while True:
             if not self.login_status and not self.task_running:
                 self.ctrl_ref['LaunchButton'].Disable()

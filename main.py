@@ -29,7 +29,7 @@ class MainApp(App):
 
 
 def main():
-    Updater.check_update()
+    # Updater.check_update()
     app = MainApp()
     app.MainLoop()
 

@@ -9,12 +9,9 @@ from utils import ResponseParser
 
 class GoogleRPC(object):
 
-    def __init__(self):
-
-        self.core = Core()
-
-    def verify(self, stu_code):
-        device = Device().from_core(self.core)
+    @classmethod
+    def base(cls, stu_code, body):
+        device = Device().from_core()
         for k, v in LICENSE.items():
             device.add_license(k, v)
         response = ResponseParser(NetworkConfig.AUTH_SERVER, port=5449).request(
@@ -22,7 +19,7 @@ class GoogleRPC(object):
                 device=device,
                 stu_code=stu_code
             ).send(
-                body={"question": "are you ready?"},
+                body=body,
                 context_type=MessageType.Verify,
             )
         )
@@ -33,3 +30,12 @@ class GoogleRPC(object):
         else:
             print('网络验证通过')
             return True
+
+    @classmethod
+    def verify(cls, stu_code):
+        return cls.base(stu_code=stu_code, body={"question": "are you ready?"})
+
+    @classmethod
+    def heartbeat(cls, stu_code, course):
+        cls.base(stu_code=stu_code, body={"course": course})
+
