@@ -120,7 +120,6 @@ class LoginFrame(Frame):
                     value=RSAUtils.encrypt(Cache.save([uid, pwd]), local=True)
                 )
             if auth_code != LICENSE.get(stu_code):
-                print("1111", LICENSE, auth_code)
                 LicenseFrame(tkinter.Tk(), stu_code=stu_code)
                 GUI.alert_error(
                     self.GUI.text(UI.Main.Dialog.Error.TITLE),

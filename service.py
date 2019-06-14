@@ -978,7 +978,7 @@ class Service(object):
             else:
                 time.sleep(30)
                 continue
-
+            self.task_running = False
             time.sleep(self.delay_time)
         self.task_running = False
 
