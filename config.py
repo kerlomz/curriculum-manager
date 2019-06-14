@@ -109,7 +109,7 @@ class SystemConfig:
     HEARTBEAT_INTERVAL = 10
     CHECK_SERVER_ON_START = False
     LANGUAGE = SYSTEM.get('Language')
-    CLIENT_VER = '1.0.5'
+    CLIENT_VER = '1.0.6'
     EMAIL = 'kerlomz@gmail.com'
     AUTHOR = 'Mr.Zhou'
 
