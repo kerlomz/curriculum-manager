@@ -544,8 +544,10 @@ class Service(object):
             'CourseTime': selected.xpath('td[{}]/text()'.format(selected_title['上课时间'])).extract_first(''),
             'CourseCode': selected.xpath('td[{}]/span/input/@value'.format(selected_title['选定'])).extract_first(''),
             'Teacher': selected.xpath('td[{}]/text()'.format(selected_title['教师姓名'])).extract_first(''),
-            'Capacity': int(selected.xpath('td[{}]/text()'.format(selected_title['容量(人数)'])).extract_first(0)),
-            'Selected': int(selected.xpath('td[{}]/text()'.format(selected_title['已选人数'])).extract_first(0)),
+            'Capacity': int(selected.xpath('td[{}]/text()'.format(selected_title['容量(人数)'])).extract_first(0)) if
+            "".join(selected.xpath('td[{}]/text()'.format(selected_title['容量(人数)'])).extract_first(0).split()) else 0,
+            'Selected': int(selected.xpath('td[{}]/text()'.format(selected_title['已选人数'])).extract_first(0)) if
+            "".join(selected.xpath('td[{}]/text()'.format(selected_title['已选人数'])).extract_first(0).split()) else 0
         }
             for selected in selected_list
         ]
@@ -936,6 +938,8 @@ class Service(object):
             else:
                 time.sleep(30)
                 continue
+            self.task_running = False
+            time.sleep(self.delay_time)
         self.task_running = False
 
     def async_general_elective_submit(self, url, data: dict):
