@@ -98,7 +98,7 @@ class Core:
 
     @classmethod
     def machine_code(cls, stu_code):
-        c_volume_serial_number = cls.c_volume_serial_number
+        c_volume_serial_number = cls.c_volume_serial_number()
         mac = [v[0][1] for v in net_if_addrs().values() if len(v[0][1]) == 17][0]
         hostname = socket.gethostname()
         plain_text = "{}||{}||{}||{}||{}".format(stu_code, c_volume_serial_number, mac, hostname, time.time())
