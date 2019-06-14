@@ -8,7 +8,7 @@ from service import *
 import menu as m
 from auth_dialog import LicenseFrame
 from core import Core
-from verification import GoogleRPC
+from google_rpc import GoogleRPC
 
 
 class LoginFrame(Frame):
@@ -106,11 +106,12 @@ class LoginFrame(Frame):
             pwd = entry_widget[1].GetValue()
             self.Service.set_login(uid, pwd)
             stu_code = self.Service.student_code
+            print(stu_code)
             auth_code = Core.machine_code_auth(
-                    stu_code=stu_code,
-                    c_volume_serial_number=Core.c_volume_serial_number(),
-                    mac_addr=Core.mac_addr(),
-                    hostname=Core.hostname()
+                stu_code=stu_code,
+                c_volume_serial_number=Core.c_volume_serial_number(),
+                mac_addr=Core.mac_addr(),
+                hostname=Core.hostname()
             )
             if check_remember.IsChecked():
                 ConfigIO.update(
@@ -119,6 +120,7 @@ class LoginFrame(Frame):
                     value=RSAUtils.encrypt(Cache.save([uid, pwd]), local=True)
                 )
             if auth_code != LICENSE.get(stu_code):
+                print("1111", LICENSE, auth_code)
                 LicenseFrame(tkinter.Tk(), stu_code=stu_code)
                 GUI.alert_error(
                     self.GUI.text(UI.Main.Dialog.Error.TITLE),
@@ -126,8 +128,8 @@ class LoginFrame(Frame):
                 )
                 exit(-999)
 
-            flag = GoogleRPC.verify(stu_code=stu_code)
-            if not flag:
+            resp_context = GoogleRPC.verify(stu_code=stu_code)
+            if not resp_context or not resp_context.get('success'):
                 GUI.alert_error(
                     self.GUI.text(UI.Main.Dialog.Error.TITLE),
                     self.GUI.text(Msg.Main.LICENSE_ERROR)

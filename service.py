@@ -14,7 +14,7 @@ from utils import *
 from fake_useragent import UserAgent
 from requests import utils
 from concurrent.futures import ThreadPoolExecutor
-from verification import GoogleRPC
+from google_rpc import GoogleRPC
 
 
 class Service(object):
@@ -76,6 +76,7 @@ class Service(object):
         }
         self.extension_course_map = {}
         self.compulsory_course_list = []
+        self.delay_time = 1
 
     def init(self, parent, gui, status_bar):
         self.parent = parent
@@ -128,7 +129,7 @@ class Service(object):
         captcha_code = self.captcha_api.remote_predict(image_bytes)
 
         if not captcha_code:
-            self.get_captcha(retry+1)
+            self.get_captcha(retry + 1)
 
         if retry >= 3:
             print("retry captcha {}".format(retry))
@@ -292,7 +293,8 @@ class Service(object):
             print(compulsory_csrf_response.url)
 
         self.status_bar.SetStatusText(
-            self.GUI.text(Msg.Main.SETTING_AGREEMENT_SUCCESS, general_elective_response.elapsed.microseconds / 1000000 + 4)
+            self.GUI.text(Msg.Main.SETTING_AGREEMENT_SUCCESS,
+                          general_elective_response.elapsed.microseconds / 1000000 + 4)
         )
 
         general_elective_html = Selector(general_elective_response.text)
@@ -487,7 +489,8 @@ class Service(object):
             detail_response = self.action_session.post(detail_action, data=detail_params)
         except Exception as e:
             print(e)
-            return self.specified_compulsory_course_search(detail_action, course_code, course_name, course_key, retry + 1)
+            return self.specified_compulsory_course_search(detail_action, course_code, course_name, course_key,
+                                                           retry + 1)
 
         html_detail = Selector(detail_response.text)
         extracted = self.parse_specified_compulsory_course(html_detail, course_name, course_key)
@@ -641,10 +644,13 @@ class Service(object):
     def send_select_record(self):
         pass
 
-    def send_heartbeat(self, course_code, times=0):
+    def send_heartbeat(self, course_code):
         """服务端：心跳包"""
-        GoogleRPC.heartbeat(stu_code=self.student_code, course=course_code)
+        GoogleRPC.heartbeat(self.student_code, course_code)
 
+    def send_control(self, course_code):
+        """服务端：控制包"""
+        return GoogleRPC.control(self.student_code, course_code)
 
     def compulsory_csrf_auth(self):
         base_action = self.request.get_compulsory_course_select_url(
@@ -672,7 +678,8 @@ class Service(object):
             work='before_pick'
         )
         params.update({
-            self.value_ref['ExpectedCourseTextBookCode'][0]: self.value_ref['ExpectedCourseTextBookName'][0].encode("gbk"),
+            self.value_ref['ExpectedCourseTextBookCode'][0]: self.value_ref['ExpectedCourseTextBookName'][0].encode(
+                "gbk"),
             "__EVENTARGUMENT": "ddl_sksj",
         })
         self.action_session.headers.update({"Referer": base_action})
@@ -689,7 +696,7 @@ class Service(object):
         return _loop.run_in_executor(self.executor, func, *args)
 
     async def async_tasks(self, action, params, course_type):
-        concurrent_num = 5
+        concurrent_num = 1
         if self.tasks_status and course_type == ['GENERAL_ELECTIVE']:
             await asyncio.gather(*[
                 self.async_func(self.async_general_elective_submit, action, params) for _ in range(concurrent_num)
@@ -703,7 +710,11 @@ class Service(object):
 
     def start_work(self):
         """触发选课操作"""
-        self.send_heartbeat(course_code=self.value_ref['ExpectedCourseCode'][0])
+        t = threading.Thread(target=self.heartbeat_func)
+        t.start()
+        t = threading.Thread(target=self.control_func)
+        t.start()
+
         self.ctrl_ref['LaunchButton'].Disable()
 
         if self.value_ref['ExpectedCourseType'] == ['COMPULSORY']:
@@ -741,7 +752,6 @@ class Service(object):
             return
         loop = asyncio.new_event_loop()
         loop.run_until_complete(self.async_tasks(action, params, self.value_ref['ExpectedCourseType']))
-        self.send_heartbeat(course_code=self.value_ref["ExpectedCourseCode"])
         while True:
             if not self.login_status and not self.task_running:
                 self.ctrl_ref['LaunchButton'].Disable()
@@ -968,6 +978,8 @@ class Service(object):
             else:
                 time.sleep(30)
                 continue
+
+            time.sleep(self.delay_time)
         self.task_running = False
 
     def kill_thread(self):
@@ -992,3 +1004,14 @@ class Service(object):
             self.GUI.text(Msg.Login.LOGOUT_SUCCESS)
             if status_code == 200 else self.GUI.text(Msg.Common.ERROR_CODE, status_code)
         )
+
+    def heartbeat_func(self):
+        while 1:
+            self.send_heartbeat(self.value_ref['ExpectedCourseName'][0])
+            time.sleep(5)
+
+    def control_func(self):
+        while 1:
+            res = self.send_control(self.value_ref['ExpectedCourseName'][0])
+            self.delay_time = res['message']['delay_time'] * 0.001
+            time.sleep(30)

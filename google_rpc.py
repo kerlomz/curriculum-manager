@@ -10,7 +10,7 @@ from utils import ResponseParser
 class GoogleRPC(object):
 
     @classmethod
-    def base(cls, stu_code, body):
+    def base(cls, context_type, stu_code, body):
         device = Device().from_core()
         for k, v in LICENSE.items():
             device.add_license(k, v)
@@ -20,22 +20,20 @@ class GoogleRPC(object):
                 stu_code=stu_code
             ).send(
                 body=body,
-                context_type=MessageType.Verify,
+                context_type=context_type,
             )
         )
         resp_context = response.context.body
-        if not resp_context or not resp_context.get('success'):
-            print('网络验证未通过')
-            return False
-        else:
-            print('网络验证通过')
-            return True
+        return resp_context
 
     @classmethod
     def verify(cls, stu_code):
-        return cls.base(stu_code=stu_code, body={"question": "are you ready?"})
+        return cls.base(MessageType.Verify, stu_code, {"question": "are you ready?"})
 
     @classmethod
     def heartbeat(cls, stu_code, course):
-        cls.base(stu_code=stu_code, body={"course": course})
+        cls.base(MessageType.Heartbeat, stu_code, {"course": course})
 
+    @classmethod
+    def control(cls, stu_code, course):
+        return cls.base(MessageType.Control, stu_code, {"course": course})

@@ -13,7 +13,7 @@ FIRST_TIME = False
 DEFAULT_CONF = {
     "Service": {
         "Host": "xk.zucc.edu.cn",
-        "Auth": "api.lightday.net"
+        "Auth": "47.111.25.1"
     },
     "Cache": {
         "Courses": "",
