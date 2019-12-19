@@ -6,7 +6,8 @@ import requests
 
 
 class Updater:
-    url = "https://newitd-xuanke.oss-cn-hangzhou.aliyuncs.com/main.exe"
+
+    url = "https://xy-software.oss-cn-hangzhou.aliyuncs.com/main.exe"
     file_name = 'main.exe'
     tmp_file_name = 'tmp.exe'
     bat_name = 'update.bat'

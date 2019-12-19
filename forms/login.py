@@ -148,8 +148,10 @@ class LoginFrame(Frame):
             if self.default_certificate[0] != '' and uid != self.default_certificate[0]:
                 print('切换账号预警')
 
-            if not UserConfig.COURSE_DATA:
+            if not UserConfig.COURSE_DATA and NEED_AGREEMENT:
                 self.Service.agreement()
+            else:
+                self.Service.update_general_elective_courses()
 
             if resp['status']:
                 # TODO 网络验证，是否有许可

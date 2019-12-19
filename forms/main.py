@@ -61,6 +61,7 @@ class MainFrame(Frame):
             size=(150, 25),
             pos=(rect[0] + 100, 30)
         )
+        btn_compulsory.Disable()
 
         """ Course List """
         rect = group_search.Rect

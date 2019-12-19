@@ -13,7 +13,7 @@ FIRST_TIME = False
 DEFAULT_CONF = {
     "Service": {
         "Host": "xk.zucc.edu.cn",
-        "Auth": "47.111.25.1"
+        "Auth": "47.96.22.125",
     },
     "Cache": {
         "Courses": "",
@@ -86,6 +86,7 @@ LOGIN_INFO = SAVED_ACCOUNT['Account']
 LAST_CSRF = CACHE['CSRF']
 SESSION = SAVED_ACCOUNT['Session']
 DYNAMIC_CODE = SAVED_ACCOUNT['DynamicCode']
+NEED_AGREEMENT = True
 
 
 class Cache(object):
@@ -101,8 +102,8 @@ class Cache(object):
 
 class NetworkConfig:
     HOST_SERVER = SERVICE.get('Host')
-    AUTH_SERVER = SERVICE.get('Auth')
-    CAPTCHA_API = SERVICE.get('Auth')
+    AUTH_SERVER = DEFAULT_CONF['Service']['Auth']
+    CAPTCHA_API = DEFAULT_CONF['Service']['Auth']
 
 
 class SystemConfig:

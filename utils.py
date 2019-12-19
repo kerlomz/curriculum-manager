@@ -189,7 +189,7 @@ class Network(object):
         return self.get_url(
             dynamic_code,
             StaticPath.Request.COMPULSORY_APPLY_PATH,
-            dict(xh=stu_id, xm=fullname.encode('gbk'), gnmkdm="N121109")
+            dict(xh=stu_id, xm=fullname.encode('utf8'), gnmkdm="N121109")
         )
 
     def get_compulsory_course_select_url(self, dynamic_code, course_key, stu_id):
@@ -222,7 +222,7 @@ class Network(object):
         return self.get_url(
             dynamic_code,
             StaticPath.Request.COMMON_COURSES_PATH,
-            dict(xh=stu_id, xm=fullname.encode('gbk'), gnmkdm="N121102")
+            dict(xh=stu_id, xm=fullname, gnmkdm="N121102")
         )
 
     def get_course_table_url(self, dynamic_code, stu_id, stu_year, stu_term):
@@ -268,6 +268,7 @@ class Network(object):
             "__EVENTARGUMENT": "",
             "__EVENTTARGET": "",
             "__VIEWSTATE": view_state,
+            "__VIEWSTATEGENERATOR": "4E92E216",
             "ddl_kcgs": "",
             "ddl_kcxz": "",
             "ddl_sksj": course_time.encode("gbk") if course_time else '',

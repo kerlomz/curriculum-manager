@@ -168,13 +168,15 @@ class Service(object):
         self.status_bar.SetStatusText(
             self.GUI.text(Msg.Login.LOGIN_SUCCESS, response.elapsed.microseconds / 1000000)
         )
-        response.encoding = "gbk"
+        response.encoding = "utf8"
         html = Selector(response.text)
         name = html.xpath('//span[@id="xhxm"]/text()').extract_first()
         self.fullname = name.replace('同学', '') if name else None
 
-        message = html.xpath('//script[contains(text(), "alert")]/text()').extract_first()
-        message = re.search("(?<=alert\(').*?(?='\))", message).group() if message else None
+        # message = html.xpath('//script[contains(text(), "alert")]/text()').extract_first()
+        message = re.search("(?<=alert\(').*?(?='\))", response.text)
+        message = message.group() if message else None
+
         title = html.xpath('//title/text()').extract_first()
         error_type = -1 if message and '验证码' in message else 1
         # TODO 逻辑错误，炸网没考虑
@@ -223,7 +225,8 @@ class Service(object):
                     "DynamicCode",
                     value=RSAUtils.encrypt(Cache.save(self.dynamic_code), local=True)
                 )
-                self.agreement()
+                if NEED_AGREEMENT:
+                    self.agreement()
                 if func:
                     if param:
                         func(**kwargs)
@@ -253,13 +256,13 @@ class Service(object):
         )
 
         general_elective_params = {
-            "Button1": "我已认真阅读，并同意以上内容".encode("gbk"),
+            "Button1": "我已认真阅读，并同意以上内容".encode("utf8"),
             "TextBox1": "100",
             "__VIEWSTATE": ViewState.GeneralElectiveAgreement
         }
 
         compulsory_params = {
-            "Button1": "我已认真阅读，并同意以上内容".encode("gbk"),
+            "Button1": "我已认真阅读，并同意以上内容".encode("utf8"),
             "TextBox1": "0",
             "__VIEWSTATE": ViewState.CompulsoryAgreement
         }
@@ -281,8 +284,8 @@ class Service(object):
         self.action_session.headers.update({"Referer": referer})
         compulsory_csrf_response = self.action_session.post(url=compulsory_action, data=compulsory_params)
 
-        general_elective_response.encoding = "gbk"
-        compulsory_csrf_response.encoding = "gbk"
+        general_elective_response.encoding = "utf8"
+        compulsory_csrf_response.encoding = "utf8"
 
         if general_elective_response.status_code == 404:
             print(general_elective_response.text)
@@ -291,6 +294,23 @@ class Service(object):
         if compulsory_csrf_response.status_code == 404:
             print(compulsory_csrf_response.text)
             print(compulsory_csrf_response.url)
+
+        if "选课说明尚未开放，无法继续操作" in general_elective_response.text:
+            print('--------------------------')
+            general_elective_response = self.action_session.get(
+                url=self.request.get_general_elective_courses_url(self.dynamic_code, self.student_code, self.fullname)
+            )
+
+        if "选课说明尚未开放，无法继续操作" in compulsory_csrf_response.text:
+            extension_course_action = self.request.get_url(
+                self.dynamic_code,
+                StaticPath.Request.COMPULSORY_LIST_PATH,
+                dict(xh=self.student_code, xm="", sm=1)
+            )
+            compulsory_csrf_response = self.action_session.get(
+                url=extension_course_action
+            )
+        general_elective_response.encoding = "utf8"
 
         self.status_bar.SetStatusText(
             self.GUI.text(Msg.Main.SETTING_AGREEMENT_SUCCESS,
@@ -338,16 +358,16 @@ class Service(object):
             dict(xh=self.student_code, xm="", sm=1)
         )
         extension_course_params = {
-            "Button3": "大学英语拓展课".encode("gbk"),
+            "Button3": "大学英语拓展课".encode("utf8"),
             "__VIEWSTATE": self.csrf_token['CompulsoryCoursePage'],
             "__EVENTTARGET": "",
             "__EVENTARGUMENT": "",
             "xx": "",
-            "zymc": self.major_name.encode("gbk"),
+            "zymc": self.major_name.encode("utf8"),
         }
         self.action_session.headers.update({"Referer": extension_course_action})
         extension_course_response = self.action_session.post(url=extension_course_action, data=extension_course_params)
-        extension_course_response.encoding = "gbk"
+        extension_course_response.encoding = "utf8"
 
         html = Selector(extension_course_response.text)
 
@@ -397,7 +417,7 @@ class Service(object):
             return
         action = self.request.get_course_table_url(self.dynamic_code, self.student_code, stu_year, stu_term)
         response = self.action_session.get(action)
-        response.encoding = "gbk"
+        response.encoding = "utf8"
         source_code = response.text
         html = Selector(source_code)
         table = html.xpath('//table[@id="Table1"]').extract()
@@ -445,7 +465,7 @@ class Service(object):
         except Exception as e:
             print(e)
             return self.get_specified_compulsory_course(course_code, retry + 1)
-        response_course.encoding = "gbk"
+        response_course.encoding = "utf8"
         html = Selector(response_course.text)
         course_list = html.xpath(
             '//table[@class="datelist"]//tr/td[1]/a[@href="#" and contains(@onclick, "xsxjs.aspx?xkkh=")]')
@@ -503,7 +523,7 @@ class Service(object):
         self.action_session.headers.update({'Referer': referer})
         response = self.action_session.get(action)
 
-        response.encoding = "gbk"
+        response.encoding = "utf8"
         html = Selector(response.text)
         self.csrf_token.update(
             {"CompulsoryCourseList": html.xpath('//input[@name="__VIEWSTATE"]/@value').extract_first()}
@@ -564,16 +584,16 @@ class Service(object):
             view_state=self.csrf_token['GeneralElectiveCourseList'],
             work='list'
         )
+        print(action, params)
         self.action_session.headers.update(
             {"Referer": self.request.get_main_url(self.dynamic_code, self.student_code)}
         )
         response = self.action_session.post(action, data=params)
-
         if response is None:
             print('response is None')
             time.sleep(3)
             return self.update_general_elective_courses()
-        response.encoding = "gbk"
+        response.encoding = "utf8"
         html = Selector(response.text)
         # print(response.text)
         csrf_token = html.xpath('//form[@name="xsyxxxk_form"]/input[@name="__VIEWSTATE"]/@value').extract_first()
@@ -664,7 +684,7 @@ class Service(object):
         )
         self.action_session.headers.update({"Referer": base_action})
         response = self.action_session.get(base_action)
-        response.encoding = "gbk"
+        response.encoding = "utf8"
         html = Selector(response.text)
         self.compulsory_csrf_update(html)
 
@@ -681,16 +701,15 @@ class Service(object):
         )
         params.update({
             self.value_ref['ExpectedCourseTextBookCode'][0]: self.value_ref['ExpectedCourseTextBookName'][0].encode(
-                "gbk"),
+                "utf8"),
             "__EVENTARGUMENT": "ddl_sksj",
         })
         self.action_session.headers.update({"Referer": base_action})
         response = self.action_session.post(base_action, data=params)
 
-        response.encoding = "gbk"
+        response.encoding = "utf8"
         html = Selector(response.text)
         self.general_elective_csrf_update(html)
-
         return response
 
     def async_func(self, func, *args):
@@ -741,9 +760,9 @@ class Service(object):
             )
             params.update({
                 self.value_ref['ExpectedCourseTextBookCode'][0]: self.value_ref['ExpectedCourseTextBookName'][0].encode(
-                    "gbk"),
+                    "utf8"),
                 self.value_ref['ExpectedCourseCode'][0]: "on",
-                "Button1": "  提交  ".encode("gbk")
+                "Button1": " 立即提交 ".encode("utf8")
             })
             if self.has_textbook:
                 params.update({
@@ -762,7 +781,7 @@ class Service(object):
         self.ctrl_ref['LaunchButton'].Enable()
 
     def general_elective_csrf_update(self, html):
-        csrf_token = html.xpath('//form[@name="xsyxxxk_form"]/input[@name="__VIEWSTATE"]/@value').extract_first()
+        csrf_token = html.xpath('//form[@name="xsyxxxk_form"]//input[@name="__VIEWSTATE"]/@value').extract_first()
         self.csrf_token.update({"GeneralElectiveCoursePost": csrf_token})
         self.status_bar.SetStatusText(
             self.GUI.text(Msg.Main.CSRF_AUTHENTICATION_SUCCESS)
@@ -777,7 +796,7 @@ class Service(object):
 
     def drop_course(self, drop_item):
         """触发退课操作"""
-        self.general_elective_csrf_auth()
+        # self.general_elective_csrf_auth()
 
         self.status_bar.SetStatusText(
             self.GUI.text(Msg.Main.CSRF_AUTHENTICATION_SUCCESS)
@@ -792,7 +811,7 @@ class Service(object):
         try:
             response = self.action_session.post(action, headers=headers, data=params)
             html = Selector(response.text)
-            response.encoding = "gbk"
+            response.encoding = "utf8"
             self.general_elective_csrf_update(html)
         except requests.exceptions.ConnectionError:
             return False
@@ -821,7 +840,7 @@ class Service(object):
             drop_id = drop_id.replace('$', ':')
             return drop_id
 
-        response.encoding = "gbk"
+        response.encoding = "utf8"
         h = Selector(response.text)
         selected_title = h.xpath('//table[@id="DataGrid2"]//tr[@class="datelisthead"]/td/text()').extract()
         selected_title = {selected: i + 1 for i, selected in enumerate(selected_title)}
@@ -839,7 +858,7 @@ class Service(object):
     def parse_result(self, response):
         """解析选课请求"""
         message = ''
-        response.encoding = "gbk"
+        response.encoding = "utf8"
         h = Selector(response.text)
         title = h.xpath('//title/text()').extract_first()
         self.value_map['SelectedCourse'] = self.parse_selected_course(response)
@@ -850,6 +869,7 @@ class Service(object):
                     self.status_bar.SetStatusText(
                         self.GUI.text(Msg.Main.TASK_SELECTED)
                     )
+                    self.tasks_status = False
 
         if '请登录' in title or response.status_code == 302:
             message = Msg.Login.LOGIN_CERTIFICATE_EXPIRED
@@ -875,6 +895,7 @@ class Service(object):
                 self.GUI.text(Msg.Main.TIME_CONFLICT)
             )
             message = self.GUI.text(Msg.Main.TIME_CONFLICT)
+
         Logger.insert(
             self.ctrl_ref['LoggerList'],
             self.logger_count,
@@ -912,7 +933,7 @@ class Service(object):
                 self.action_session.headers.update({"Referer": url})
                 data.update({"__VIEWSTATE": self.csrf_token["CompulsoryCoursePost"]})
                 response = self.action_session.post(url, data=data)
-                response.encoding = 'gbk'
+                response.encoding = 'utf8'
                 html = Selector(response.text)
                 self.compulsory_csrf_update(html)
 
@@ -952,27 +973,27 @@ class Service(object):
                     self.GUI.text([Msg.Main.HEARTBEAT_FAILED, Msg.Main.TASK_INTERRUPTED, Msg.Main.CONTACT_ADMIN])
                 )
                 break
-            try:
-                self.action_session.headers.update({"Referer": url})
-                data.update({"__VIEWSTATE": self.csrf_token["GeneralElectiveCoursePost"]})
-                response = self.action_session.post(url, data=data)
-                response.encoding = 'gbk'
-                html = Selector(response.text)
-                self.general_elective_csrf_update(html)
+            # try:
+            self.action_session.headers.update({"Referer": url})
+            data.update({"__VIEWSTATE": self.csrf_token["GeneralElectiveCoursePost"]})
+            response = self.action_session.post(url, data=data)
+            response.encoding = 'utf8'
+            html = Selector(response.text)
+            self.general_elective_csrf_update(html)
 
-            except requests.exceptions.ConnectionError:
-                self.status_bar.SetStatusText(
-                    self.GUI.text([Msg.Main.REQUEST_TIMEOUT, Msg.Common.RETRYING])
-                )
-                time.sleep(3)
-                continue
+            # except requests.exceptions.ConnectionError:
+            #     self.status_bar.SetStatusText(
+            #         self.GUI.text([Msg.Main.REQUEST_TIMEOUT, Msg.Common.RETRYING])
+            #     )
+            #     time.sleep(3)
+            #     continue
 
-            if response is None:
-                self.status_bar.SetStatusText(
-                    self.GUI.text([Msg.Main.REQUEST_TIMEOUT, Msg.Common.RETRYING])
-                )
-                time.sleep(10)
-                continue
+            # if response is None:
+            #     self.status_bar.SetStatusText(
+            #         self.GUI.text([Msg.Main.REQUEST_TIMEOUT, Msg.Common.RETRYING])
+            #     )
+            #     time.sleep(10)
+            #     continue
             if response.status_code == 200:
                 self.parse_result(response)
             elif response.status_code == 503:
